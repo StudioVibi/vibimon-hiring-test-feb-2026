@@ -4,8 +4,10 @@ import * as Battle from "../Battle";
 import * as Dialog from "../Dialog";
 import * as Creature from "../Creature";
 import * as Map from "../Map";
+import * as Post from "../Post";
 import * as State from "../State";
 import * as Tile from "../Tile";
+import * as Util from "../../Util";
 import * as Type from "../../Type";
 
 const battle_anim_ticks = Const.tick_rate;
@@ -17,40 +19,69 @@ const battle_capture_throw_ticks = Const.tick_rate;
 const battle_capture_result_ticks = Const.tick_rate;
 const battle_capture_chance = 0.5;
 
+function state_with_player(
+  state: { shared: Type.State; player: Type.PlayerState },
+  patch: Partial<Type.PlayerState>
+): { shared: Type.State; player: Type.PlayerState } {
+  const player = { ...state.player, ...patch };
+  return { ...state, player };
+}
+
+// Build a deterministic seed for battle randomness.
+function battle_seed(
+  state: { shared: Type.State; player: Type.PlayerState },
+  salt: number
+): number {
+  let seed = Util.hash_step(2166136261, salt);
+  seed = Util.hash_step(seed, state.shared.tick);
+  seed = Util.hash_step(seed, state.player.player_pos.x);
+  seed = Util.hash_step(seed, state.player.player_pos.y);
+  const entity = Map.entity_at(state.shared.map, state.player.player_pos);
+  if (entity) {
+    seed = Util.hash_step(seed, entity.party.length);
+    seed = Util.hash_step(seed, entity.last_tick);
+  }
+  return seed;
+}
+
 // Start a battle state for the current player.
-export function start(state: Type.State): Type.State {
-  const entity = Map.entity_at(state.map, state.player_pos);
+export function start(state: { shared: Type.State; player: Type.PlayerState }): { shared: Type.State; player: Type.PlayerState } {
+  const entity = Map.entity_at(state.shared.map, state.player.player_pos);
   if (!entity) {
     return state;
   }
   if (entity.party.length === 0) {
     return state;
   }
-  const enemy = Battle.enemy_creature(battle_enemy_level);
+  const enemy = Battle.enemy_creature_seeded(
+    battle_enemy_level,
+    battle_seed(state, 1)
+  );
   const battle = Battle.create(entity.party, enemy);
   const next = State.player_transform(state, player_entity => ({
     ...player_entity,
     keys: { a: false, s: false, d: false, w: false }
   }));
-  return { ...next, battle, dialog: null, menu: null };
+  return state_with_player(next, { battle, dialog: null, menu: null });
 }
 
 // Try a move and trigger a battle from dark grass.
 export function try_move(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   from: Type.Pos,
   delta: Type.Pos,
   tick: number
-): Type.State {
+): { shared: Type.State; player: Type.PlayerState } {
   const moved = State.entity_walk(state, from, delta, tick);
   if (moved === state) {
     return state;
   }
-  const tile = Map.get(moved.map, moved.player_pos);
+  const tile = Map.get(moved.shared.map, moved.player.player_pos);
   if (!tile || !Tile.is_dark_grass(tile)) {
     return moved;
   }
-  if (Math.random() >= battle_chance) {
+  const encounter_seed = battle_seed(moved, 2);
+  if (Util.hash_unit(encounter_seed) >= battle_chance) {
     return moved;
   }
   return start(moved);
@@ -58,9 +89,9 @@ export function try_move(
 
 // Persist the full player party from battle back to the map.
 function apply_party(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   party: Type.Creature[]
-): Type.State {
+): { shared: Type.State; player: Type.PlayerState } {
   const next_party = Creature.party_copy(party);
   return State.player_transform(state, entity => {
     return { ...entity, party: next_party };
@@ -69,29 +100,29 @@ function apply_party(
 
 // Open a dialog and keep the provided battle state.
 function open_text(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   battle: Type.Battle,
   dialog: Type.DialogText,
   tick: number
-): Type.State {
+): { shared: Type.State; player: Type.PlayerState } {
   const dialog_state = Dialog.create(dialog, tick);
-  return { ...state, battle, dialog: dialog_state };
+  return state_with_player(state, { battle, dialog: dialog_state });
 }
 
 // Exit the battle and sync state.
-function close(state: Type.State): Type.State {
-  const battle = state.battle;
+function close(state: { shared: Type.State; player: Type.PlayerState }): { shared: Type.State; player: Type.PlayerState } {
+  const battle = state.player.battle;
   if (!battle) {
     return state;
   }
   let next = apply_party(state, battle.party);
-  next = { ...next, battle: null, dialog: null };
+  next = state_with_player(next, { battle: null, dialog: null });
   return next;
 }
 
 // Apply a pending MON switch when the second paragraph starts.
-function apply_pending_party(state: Type.State): Type.State {
-  const battle = state.battle;
+function apply_pending_party(state: { shared: Type.State; player: Type.PlayerState }): { shared: Type.State; player: Type.PlayerState } {
+  const battle = state.player.battle;
   if (!battle) {
     return state;
   }
@@ -99,7 +130,7 @@ function apply_pending_party(state: Type.State): Type.State {
   if (!pending) {
     return state;
   }
-  const dialog_state = state.dialog;
+  const dialog_state = state.player.dialog;
   if (dialog_state) {
     if (dialog_state.cursor.paragraph <= 0) {
       return state;
@@ -108,25 +139,25 @@ function apply_pending_party(state: Type.State): Type.State {
   const lead = pending[0];
   if (!lead) {
     const next_battle = { ...battle, pending_party: null };
-    return { ...state, battle: next_battle };
+    return state_with_player(state, { battle: next_battle });
   }
   let next_battle = { ...battle, party: pending, pending_party: null };
   next_battle = Battle.player_set(next_battle, lead);
-  return { ...state, battle: next_battle };
+  return state_with_player(state, { battle: next_battle });
 }
 
 // Begin an attack animation after dialog ends.
 function start_anim(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   tick: number
-): Type.State {
-  const battle = state.battle;
+): { shared: Type.State; player: Type.PlayerState } {
+  const battle = state.player.battle;
   if (!battle) {
     return state;
   }
   const action = battle.actions[0];
   if (!action) {
-    return { ...state, battle: Battle.reset_menu(battle) };
+    return state_with_player(state, { battle: Battle.reset_menu(battle) });
   }
   const move = Move.move_table[action.move];
   const side = Battle.target(action);
@@ -141,21 +172,21 @@ function start_anim(
     duration: battle_anim_ticks
   };
   const next_battle = { ...battle, anim, phase: "anim", hp_anim: null };
-  return { ...state, battle: next_battle };
+  return state_with_player(state, { battle: next_battle });
 }
 
 // Begin the HP animation after a hit effect.
 function start_hp(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   tick: number
-): Type.State {
-  const battle = state.battle;
+): { shared: Type.State; player: Type.PlayerState } {
+  const battle = state.player.battle;
   if (!battle) {
     return state;
   }
   const action = battle.actions[0];
   if (!action) {
-    return { ...state, battle: { ...battle, phase: "menu" } };
+    return state_with_player(state, { battle: { ...battle, phase: "menu" } });
   }
   const move = Move.move_table[action.move];
   const side = Battle.target(action);
@@ -175,7 +206,7 @@ function start_hp(
   }
   if (next_hp === target.chp) {
     const next_battle = { ...battle, anim: null, hp_anim: null, phase: "hp" };
-    return { ...state, battle: next_battle };
+    return state_with_player(state, { battle: next_battle });
   }
   const updated = { ...target, chp: next_hp };
   let next_battle = Battle.creature_set(battle, side, updated);
@@ -187,16 +218,16 @@ function start_hp(
     duration: battle_hp_ticks
   };
   next_battle = { ...next_battle, hp_anim, anim: null, phase: "hp" };
-  return { ...state, battle: next_battle };
+  return state_with_player(state, { battle: next_battle });
 }
 
 // Open a dialog for a battle action.
 function open_dialog(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   battle: Type.Battle,
   action: Type.BattleAction,
   tick: number
-): Type.State {
+): { shared: Type.State; player: Type.PlayerState } {
   const next_battle = { ...battle, phase: "dialog_action" };
   const dialog = Battle.action_dialog(battle, action);
   return open_text(state, next_battle, dialog, tick);
@@ -204,16 +235,16 @@ function open_dialog(
 
 // Advance to the next action or return to the menu.
 function next_action(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   tick: number
-): Type.State {
-  const battle = state.battle;
+): { shared: Type.State; player: Type.PlayerState } {
+  const battle = state.player.battle;
   if (!battle) {
     return state;
   }
   const rest = battle.actions.slice(1);
   if (rest.length === 0) {
-    return { ...state, battle: Battle.reset_menu(battle) };
+    return state_with_player(state, { battle: Battle.reset_menu(battle) });
   }
   const next_battle = {
     ...battle,
@@ -223,14 +254,14 @@ function next_action(
   };
   const action = rest[0];
   if (!action) {
-    return { ...state, battle: Battle.reset_menu(next_battle) };
+    return state_with_player(state, { battle: Battle.reset_menu(next_battle) });
   }
   return open_dialog(state, next_battle, action, tick);
 }
 
 // Enter MON selection mode.
-function open_mon(state: Type.State): Type.State {
-  const battle = state.battle;
+function open_mon(state: { shared: Type.State; player: Type.PlayerState }): { shared: Type.State; player: Type.PlayerState } {
+  const battle = state.player.battle;
   if (!battle) {
     return state;
   }
@@ -252,15 +283,15 @@ function open_mon(state: Type.State): Type.State {
     hp_anim: null,
     capture: null
   };
-  return { ...state, battle: next_battle };
+  return state_with_player(state, { battle: next_battle });
 }
 
 // Confirm the currently selected MON for battle swap.
 function confirm_mon(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   tick: number
-): Type.State {
-  const battle = state.battle;
+): { shared: Type.State; player: Type.PlayerState } {
+  const battle = state.player.battle;
   if (!battle) {
     return state;
   }
@@ -284,7 +315,10 @@ function confirm_mon(
     [`Do it! ${new_name}!`]
   ];
 
-  const enemy_move = Battle.enemy_move(battle);
+  const enemy_move = Battle.enemy_move_seeded(
+    battle,
+    battle_seed(state, 3)
+  );
   const actions: Type.BattleAction[] = [{ side: "enemy", move: enemy_move }];
   const next_battle = {
     ...battle,
@@ -300,30 +334,30 @@ function confirm_mon(
 
 // Start the capture throw phase.
 function start_capture(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   tick: number
-): Type.State {
-  const battle = state.battle;
+): { shared: Type.State; player: Type.PlayerState } {
+  const battle = state.player.battle;
   if (!battle) {
     return state;
   }
-  const success = Math.random() < battle_capture_chance;
+  const success = Util.hash_unit(battle_seed(state, 4)) < battle_capture_chance;
   const next_battle = Battle.capture_start(battle, success, tick);
-  return { ...state, battle: next_battle, dialog: null };
+  return state_with_player(state, { battle: next_battle, dialog: null });
 }
 
 // Resolve capture after the result animation ends.
 function finish_capture(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   tick: number
-): Type.State {
-  const battle = state.battle;
+): { shared: Type.State; player: Type.PlayerState } {
+  const battle = state.player.battle;
   if (!battle) {
     return state;
   }
   const capture = battle.capture;
   if (!capture) {
-    return { ...state, battle: Battle.reset_menu(battle) };
+    return state_with_player(state, { battle: Battle.reset_menu(battle) });
   }
 
   if (capture.success) {
@@ -333,7 +367,10 @@ function finish_capture(
     return open_text(state, next_battle, dialog, tick);
   }
 
-  const enemy_move = Battle.enemy_move(battle);
+  const enemy_move = Battle.enemy_move_seeded(
+    battle,
+    battle_seed(state, 5)
+  );
   const actions: Type.BattleAction[] = [{ side: "enemy", move: enemy_move }];
   const next_battle = {
     ...battle,
@@ -350,15 +387,15 @@ function finish_capture(
 
 // Continue battle flow while a dialog phase is active.
 function on_dialog_tick(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   tick: number
-): Type.State {
+): { shared: Type.State; player: Type.PlayerState } {
   const applied = apply_pending_party(state);
-  const battle = applied.battle;
+  const battle = applied.player.battle;
   if (!battle) {
     return applied;
   }
-  if (applied.dialog) {
+  if (applied.player.dialog) {
     return applied;
   }
   if (battle.phase === "dialog_action") {
@@ -367,17 +404,17 @@ function on_dialog_tick(
   const action = battle.actions[0];
   if (!action) {
     const next_battle = Battle.reset_menu(battle);
-    return { ...applied, battle: next_battle };
+    return state_with_player(applied, { battle: next_battle });
   }
   return open_dialog(applied, battle, action, tick);
 }
 
 // Update the battle state on tick.
 export function on_tick(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   tick: number
-): Type.State {
-  const battle = state.battle;
+): { shared: Type.State; player: Type.PlayerState } {
+  const battle = state.player.battle;
   if (!battle) {
     return state;
   }
@@ -413,19 +450,19 @@ export function on_tick(
   if (battle.phase === "capture_throw") {
     const capture = battle.capture;
     if (!capture) {
-      return { ...state, battle: Battle.reset_menu(battle) };
+      return state_with_player(state, { battle: Battle.reset_menu(battle) });
     }
     if (tick - capture.start_tick < battle_capture_throw_ticks) {
       return state;
     }
     const next_battle = Battle.capture_result(battle, tick);
-    return { ...state, battle: next_battle };
+    return state_with_player(state, { battle: next_battle });
   }
 
   if (battle.phase === "capture_result") {
     const capture = battle.capture;
     if (!capture) {
-      return { ...state, battle: Battle.reset_menu(battle) };
+      return state_with_player(state, { battle: Battle.reset_menu(battle) });
     }
     if (tick - capture.start_tick < battle_capture_result_ticks) {
       return state;
@@ -434,7 +471,7 @@ export function on_tick(
   }
 
   if (battle.phase === "run") {
-    if (state.dialog) {
+    if (state.player.dialog) {
       return state;
     }
     return close(state);
@@ -445,14 +482,14 @@ export function on_tick(
 
 // Handle menu selection on the battle home menu.
 function menu_select(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   battle: Type.Battle,
   tick: number
-): Type.State {
+): { shared: Type.State; player: Type.PlayerState } {
   const choice = Battle.menu_choice(battle);
   if (choice === "fight") {
     const next_battle = { ...battle, phase: "moves", move_index: 0 };
-    return { ...state, battle: next_battle };
+    return state_with_player(state, { battle: next_battle });
   }
   if (choice === "mon") {
     return open_mon(state);
@@ -470,10 +507,10 @@ function menu_select(
 
 // Handle move selection on the move list screen.
 function move_select(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   battle: Type.Battle,
   tick: number
-): Type.State {
+): { shared: Type.State; player: Type.PlayerState } {
   const moves = battle.player.moves;
   let total = moves.length;
   if (total > battle_max_moves) {
@@ -492,7 +529,10 @@ function move_select(
     return state;
   }
 
-  const enemy_move = Battle.enemy_move(battle);
+  const enemy_move = Battle.enemy_move_seeded(
+    battle,
+    battle_seed(state, 6)
+  );
   const actions = Battle.turn_actions(battle, move_id, enemy_move);
   const next_battle = {
     ...battle,
@@ -502,32 +542,29 @@ function move_select(
   };
   const action = actions[0];
   if (!action) {
-    return { ...state, battle: Battle.reset_menu(next_battle) };
+    return state_with_player(state, { battle: Battle.reset_menu(next_battle) });
   }
   return open_dialog(state, next_battle, action, tick);
 }
 
 // Apply a post to the battle state.
 export function on_post(
-  post: Type.Post,
-  state: Type.State
-): Type.State {
-  if (post.type !== "key") {
-    return state;
-  }
-  const battle = state.battle;
+  post: Post.KeyPost,
+  state: { shared: Type.State; player: Type.PlayerState }
+): { shared: Type.State; player: Type.PlayerState } {
+  const battle = state.player.battle;
   if (!battle) {
     return state;
   }
   const key = post.key;
-  const down = post.down;
-  const tick = post.tick;
+  const down = post.down === 1;
+  const tick = state.shared.tick;
 
-  const dialog_state = state.dialog;
+  const dialog_state = state.player.dialog;
   if (dialog_state) {
     if (down && key === "J") {
       const next = Dialog.advance(dialog_state, tick);
-      const next_state = { ...state, dialog: next };
+      const next_state = state_with_player(state, { dialog: next });
       return apply_pending_party(next_state);
     }
     return state;
@@ -540,7 +577,7 @@ export function on_post(
   if (battle.phase === "menu") {
     if (key === "A" || key === "S" || key === "D" || key === "W") {
       const next_battle = Battle.menu_nav(battle, key);
-      return { ...state, battle: next_battle };
+      return state_with_player(state, { battle: next_battle });
     }
     if (key === "J") {
       return menu_select(state, battle, tick);
@@ -551,11 +588,11 @@ export function on_post(
   if (battle.phase === "moves") {
     if (key === "K") {
       const next_battle = { ...battle, phase: "menu" };
-      return { ...state, battle: next_battle };
+      return state_with_player(state, { battle: next_battle });
     }
     if (key === "W" || key === "S") {
       const next_battle = Battle.move_nav(battle, key);
-      return { ...state, battle: next_battle };
+      return state_with_player(state, { battle: next_battle });
     }
     if (key === "J") {
       return move_select(state, battle, tick);
@@ -566,11 +603,11 @@ export function on_post(
   if (battle.phase === "mon") {
     if (key === "K") {
       const next_battle = { ...battle, phase: "menu" };
-      return { ...state, battle: next_battle };
+      return state_with_player(state, { battle: next_battle });
     }
     if (key === "W" || key === "S") {
       const next_battle = Battle.creature_nav(battle, key);
-      return { ...state, battle: next_battle };
+      return state_with_player(state, { battle: next_battle });
     }
     if (key === "J") {
       return confirm_mon(state, tick);

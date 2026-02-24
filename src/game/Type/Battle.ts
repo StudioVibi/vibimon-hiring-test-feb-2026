@@ -2,10 +2,27 @@ import * as Move from "../../data/Move";
 import * as Nav from "./Nav";
 import * as Creature from "./Creature";
 import * as Monster from "./Monster";
+import * as Util from "../Util";
 import * as Type from "../Type";
 
 const battle_enemy_ids =
   Object.keys(Monster.by_id) as Type.Specie[];
+
+// Resolve a deterministic list index from a seed.
+function seeded_index(total: number, seed: number): number {
+  if (total <= 0) {
+    return 0;
+  }
+  const ratio = Util.hash_unit(seed);
+  let index = Math.floor(ratio * total);
+  if (index >= total) {
+    index = total - 1;
+  }
+  if (index < 0) {
+    index = 0;
+  }
+  return index;
+}
 
 // Build a fresh battle state.
 export function create(
@@ -35,7 +52,20 @@ export function create(
 
 // Build a random enemy creature for a level.
 export function enemy_creature(level: number): Type.Creature {
-  const idx = Math.floor(Math.random() * battle_enemy_ids.length);
+  const seed = Util.hash_step(level, battle_enemy_ids.length);
+  const idx = seeded_index(battle_enemy_ids.length, seed);
+  const id = battle_enemy_ids[idx];
+  const spec = Monster.by_id[id];
+  return Creature.create(id, spec.name, level);
+}
+
+// Build a deterministic enemy creature for a level and seed.
+export function enemy_creature_seeded(
+  level: number,
+  seed: number
+): Type.Creature {
+  const final_seed = Util.hash_step(seed, level);
+  const idx = seeded_index(battle_enemy_ids.length, final_seed);
   const id = battle_enemy_ids[idx];
   const spec = Monster.by_id[id];
   return Creature.create(id, spec.name, level);
@@ -281,6 +311,21 @@ export function enemy_move(
   if (moves.length === 0) {
     return "scratch";
   }
-  const idx = Math.floor(Math.random() * moves.length);
+  const seed = Util.hash_step(moves.length, battle.player.chp);
+  const idx = seeded_index(moves.length, seed);
+  return moves[idx];
+}
+
+// Pick a deterministic enemy move from a battle and seed.
+export function enemy_move_seeded(
+  battle: Type.Battle,
+  seed: number
+): Type.Move {
+  const moves = battle.enemy.moves;
+  if (moves.length === 0) {
+    return "scratch";
+  }
+  const final_seed = Util.hash_step(seed, battle.enemy.chp);
+  const idx = seeded_index(moves.length, final_seed);
   return moves[idx];
 }

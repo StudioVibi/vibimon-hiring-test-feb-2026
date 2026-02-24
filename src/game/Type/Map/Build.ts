@@ -328,7 +328,7 @@ export function insert(
 // Build an on-walk teleport handler.
 export function teleport(target: Type.Pos): Type.OnWalk {
   return (state, from, delta, tick) => {
-    const entity = Map.entity_at(state.map, from);
+    const entity = Map.entity_at(state.shared.map, from);
     if (!entity) {
       return state;
     }

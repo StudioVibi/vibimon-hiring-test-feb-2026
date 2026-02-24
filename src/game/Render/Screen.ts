@@ -409,10 +409,10 @@ function battle_mon_sprite_id(
 // Draw the battle screen.
 function draw_battle(
   ctx: CanvasRenderingContext2D,
-  st: Type.State,
+  st: { shared: Type.State; player: Type.PlayerState },
   tick: number
 ): void {
-  const battle = st.battle;
+  const battle = st.player.battle;
   if (!battle) {
     return;
   }
@@ -509,13 +509,13 @@ function draw_battle(
 // Draw the start-menu full-screen party picker.
 function draw_party_picker(
   ctx: CanvasRenderingContext2D,
-  st: Type.State,
+  st: { shared: Type.State; player: Type.PlayerState },
   menu: Type.Menu
 ): void {
   const canvas = ctx.canvas;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const entity = Map.entity_at(st.map, st.player_pos);
+  const entity = Map.entity_at(st.shared.map, st.player.player_pos);
   let party: Type.Creature[] = [];
   if (entity) {
     party = entity.party;
@@ -529,16 +529,16 @@ function draw_party_picker(
 // Render the full frame.
 export function on_draw(
   ctx: CanvasRenderingContext2D,
-  st: Type.State,
+  st: { shared: Type.State; player: Type.PlayerState },
   tick: number
 ): void {
-  const menu = st.menu;
+  const menu = st.player.menu;
   if (menu && menu.mode === "party") {
     draw_party_picker(ctx, st, menu);
     return;
   }
 
-  if (st.battle) {
+  if (st.player.battle) {
     draw_battle(ctx, st, tick);
     return;
   }
@@ -546,8 +546,8 @@ export function on_draw(
   const canvas = ctx.canvas;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const map = st.map;
-  const player_tile = st.player_pos;
+  const map = st.shared.map;
+  const player_tile = st.player.player_pos;
   const player_data = Map.get(map, player_tile);
   let player_pos = player_tile;
   if (player_data && player_data.entity) {
@@ -598,7 +598,7 @@ export function on_draw(
     draw_entity(ctx, entity.sprite, sx, sy, entity.direction, frame);
   }
 
-  const dialog_state = st.dialog;
+  const dialog_state = st.player.dialog;
   if (dialog_state) {
     const dialog_h = tile_sz * 3;
     const dialog_y = canvas.height - dialog_h;

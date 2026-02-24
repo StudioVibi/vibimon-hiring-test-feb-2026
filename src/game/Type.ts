@@ -248,11 +248,11 @@ export type Battle = {
 // Single map tile model with base ground, optional entity, and walk effect.
 
 export type OnWalk = (
-  state: State,
+  state: { shared: State; player: PlayerState },
   from_pos: Pos,
   delta: Pos,
   tick: number
-) => State;
+) => { shared: State; player: PlayerState };
 
 export type Tile = {
   ground: Sprite;
@@ -268,7 +268,7 @@ export type Map = Immutable.Map<string, Tile>;
 
 // State
 // =====
-// Root runtime aggregate used by updates, posts, and both render modes.
+// Shared multiplayer aggregate (world + all players).
 
 export type Menu = {
   mode: "start" | "party";
@@ -276,17 +276,34 @@ export type Menu = {
   mon_index: number;
 };
 
-export type Post = {
-  type: "key";
-  key: KeyInput;
-  down: boolean;
-  tick: number;
-};
-
-export type State = {
-  map: Map;
+export type PlayerState = {
   player_pos: Pos;
   dialog: Maybe<Dialog>;
   menu: Maybe<Menu>;
   battle: Maybe<Battle>;
+};
+
+export type Post =
+  | {
+    $: "join";
+    pid: string;
+  }
+  | {
+    $: "leave";
+    pid: string;
+  }
+  | {
+    $: "key";
+    pid: string;
+    key: KeyInput;
+    down: 0 | 1;
+  };
+
+export type Players = Record<string, PlayerState>;
+
+export type State = {
+  map: Map;
+  spawn_pos: Pos;
+  players: Players;
+  tick: number;
 };

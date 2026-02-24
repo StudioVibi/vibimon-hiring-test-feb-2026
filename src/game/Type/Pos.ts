@@ -26,6 +26,26 @@ export function add(a: Type.Pos, b: Type.Pos): Type.Pos {
   return create(a.x + b.x, a.y + b.y);
 }
 
+// Build a list of map positions around an origin for one radius.
+export function ring_positions(
+  origin: Type.Pos,
+  radius: number
+): Type.Pos[] {
+  if (radius <= 0) {
+    return [{ ...origin }];
+  }
+  const out: Type.Pos[] = [];
+  for (let dx = -radius; dx <= radius; dx++) {
+    out.push({ x: origin.x + dx, y: origin.y - radius });
+    out.push({ x: origin.x + dx, y: origin.y + radius });
+  }
+  for (let dy = -radius + 1; dy <= radius - 1; dy++) {
+    out.push({ x: origin.x - radius, y: origin.y + dy });
+    out.push({ x: origin.x + radius, y: origin.y + dy });
+  }
+  return out;
+}
+
 // Interpolate between two positions by tick.
 export function lerp(
   prev: Type.Pos,

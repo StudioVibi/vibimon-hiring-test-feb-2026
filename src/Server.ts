@@ -55,7 +55,7 @@ async function handle_request(req: Request): Promise<Response> {
 }
 
 const server = Bun.serve({
-  port: 4001,
+  port: 4000,
   fetch: handle_request
 });
 
