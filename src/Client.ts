@@ -1,88 +1,125 @@
+import * as VibiNet from "vibinet";
 import * as Sprite from "./data/Sprite";
+import * as Const from "./game/Const";
 import * as Game from "./game/Game";
 import * as Image from "./game/Type/Image";
-import * as Util from "./game/Util";
+import * as Post from "./game/Type/Post";
+import * as Players from "./game/Type/State/Players";
+import * as Smooth from "./game/Type/State/Smooth";
 import * as RenderScreen from "./game/Render/Screen";
 import * as RenderTerminal from "./game/Render/Terminal";
 import * as Type from "./game/Type";
 
 // Grab the game canvas element.
-const canvas = document.getElementById("game") as HTMLCanvasElement | null;
-if (!canvas) {
+const canvas_el = document.getElementById("game");
+if (!(canvas_el instanceof HTMLCanvasElement)) {
   throw new Error("missing #game canvas");
 }
+const canvas = canvas_el;
 
 // Create the 2d rendering context.
-const ctx = canvas.getContext("2d");
-if (!ctx) {
+const ctx_raw = canvas.getContext("2d");
+if (!ctx_raw) {
   throw new Error("unable to create 2d context");
 }
+const ctx: CanvasRenderingContext2D = ctx_raw;
 
 const terminal_el = document.getElementById("terminal");
 const raw_toggle_el = document.getElementById("raw-toggle");
-const terminal = terminal_el as HTMLTextAreaElement | null;
-const raw_toggle = raw_toggle_el as HTMLInputElement | null;
+const terminal = terminal_el instanceof HTMLTextAreaElement ? terminal_el : null;
+const raw_toggle = raw_toggle_el instanceof HTMLInputElement ? raw_toggle_el : null;
 const root = document.documentElement;
 
 // Keep pixel art crisp.
 ctx.imageSmoothingEnabled = false;
 
-// Track local state and tick progression.
-let state: Type.State = Game.create();
-let last_tick = Util.tick_now();
 let render_mode: Type.RenderMode = "IMG";
-const terminal_cols = 40;
-const terminal_rows = 18;
-const terminal_w = 320;
-const terminal_h = 288;
 const measure_canvas = document.createElement("canvas");
 const measure_ctx = measure_canvas.getContext("2d");
 
-// Pick the terminal font name.
-const terminal_font_name = "Menlo";
-
-// Build a CSS font list string.
-function font_css(name: string): string {
-  return `"${name}", monospace`;
+// Read a query parameter value.
+function query_value(key: string): string | null {
+  const params = new URLSearchParams(window.location.search);
+  const value = params.get(key);
+  if (!value) {
+    return null;
+  }
+  return value;
 }
 
-// Store the terminal font css.
-const terminal_font_css = font_css(terminal_font_name);
-
-// Apply the current font selection.
-function apply_terminal_font(): void {
-  root.style.setProperty("--terminal-font", terminal_font_css);
-  apply_terminal_metrics();
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(() => {
-      apply_terminal_metrics();
-    });
+// Create or read a stable player id.
+function player_pid(): string {
+  const query_pid = query_value("pid");
+  if (query_pid) {
+    return query_pid;
+  }
+  try {
+    const saved = window.localStorage.getItem(Const.pid_storage_key);
+    if (saved) {
+      return saved;
+    }
+    const next = VibiNet.VibiNet.gen_name();
+    window.localStorage.setItem(Const.pid_storage_key, next);
+    return next;
+  } catch {
+    return VibiNet.VibiNet.gen_name();
   }
 }
 
-// Measure the glyph width for the active terminal font.
-function terminal_glyph_width(font_css: string, size: number): number {
-  if (!measure_ctx) {
-    return 0;
+const room = query_value("room") || Const.room_default;
+const server = query_value("server") || undefined;
+const pid = player_pid();
+const initial_state = Game.create();
+
+const game = new VibiNet.VibiNet.game<Type.State, Type.Post>({
+  server,
+  room,
+  initial: initial_state,
+  on_tick: Game.on_tick,
+  on_post: Game.on_post,
+  packer: Post.packer,
+  tick_rate: Const.tick_rate,
+  tolerance: Const.tolerance_ms,
+  smooth: (remote_state, local_state) => {
+    return Smooth.smooth_player_prediction(remote_state, local_state, pid);
   }
-  measure_ctx.font = `${size}px ${font_css}`;
-  const metrics = measure_ctx.measureText("0");
-  return metrics.width;
+});
+
+// Track held keys for blur/release safety.
+const held_keys: Record<Type.KeyInput, boolean> = {
+  A: false,
+  S: false,
+  D: false,
+  W: false,
+  J: false,
+  K: false,
+  L: false
+};
+
+// Post one key event to the shared room.
+function post_key(key: Type.KeyInput, down: boolean): void {
+  game.post(Post.key(pid, key, down));
 }
 
-// Apply terminal sizing to match the canvas resolution.
-function apply_terminal_metrics(): void {
-  const test_size = 100;
-  const glyph_w = terminal_glyph_width(terminal_font_css, test_size);
-  if (glyph_w <= 0) {
-    return;
+// Post leave and close the network client.
+function close_game(): void {
+  try {
+    game.post(Post.leave(pid));
+  } catch {
+    // Ignore close-time post errors.
   }
-  const target_w = terminal_w / terminal_cols;
-  const line_h = terminal_h / terminal_rows;
-  const font_a = (target_w * test_size) / glyph_w;
-  const font_size = Math.min(font_a, line_h);
-  root.style.setProperty("--terminal-font-size", `${font_size.toFixed(2)}px`);
-  root.style.setProperty("--terminal-line-height", `${line_h}px`);
+  game.close();
+}
+
+// Release all held keys in the room.
+function release_all_keys(): void {
+  for (const key of Post.key_inputs) {
+    if (!held_keys[key]) {
+      continue;
+    }
+    held_keys[key] = false;
+    post_key(key, false);
+  }
 }
 
 // Toggle between canvas and raw terminal rendering.
@@ -104,33 +141,33 @@ function toggle_render_mode(): void {
 function set_render_mode(mode: Type.RenderMode): void {
   if (!terminal) {
     render_mode = "IMG";
-  } else {
-    render_mode = mode;
+    canvas.style.display = "block";
+    return;
   }
 
+  render_mode = mode;
   if (render_mode === "RAW") {
     canvas.style.display = "none";
     terminal.style.display = "block";
     return;
   }
+
   canvas.style.display = "block";
-  if (terminal) {
-    terminal.style.display = "none";
-  }
+  terminal.style.display = "none";
 }
 
 // Preload known sprites up front.
-const sprite_ids = Object.keys(Sprite.sprite_to_glyph);
+// "wall" is a RAW-only/invisible blocker and has no image asset.
+const sprite_ids = Object.keys(Sprite.sprite_to_glyph).filter((id) => id !== "wall");
 Image.preload(sprite_ids);
 
-// Advance ticks, step sim, and render a frame.
+// Advance the networked sim and render a frame.
 function frame(): void {
-  const now = Util.tick_now();
-  while (last_tick < now) {
-    state = Game.on_tick(state, last_tick);
-    last_tick++;
-  }
-  const tick = Util.tick_now();
+  const shared = game.initial_time() === null
+    ? initial_state
+    : game.compute_render_state();
+  const state = Players.player_view(shared, pid);
+  const tick = state.shared.tick;
   if (render_mode === "RAW") {
     if (terminal) {
       terminal.value = RenderTerminal.on_draw_raw(state, tick);
@@ -143,7 +180,6 @@ function frame(): void {
 
 // Handle keyboard input and post actions.
 function handle_key(event: KeyboardEvent, down: boolean): void {
-  // Ignore key repeat events.
   if (down && event.repeat) {
     return;
   }
@@ -156,20 +192,37 @@ function handle_key(event: KeyboardEvent, down: boolean): void {
     return;
   }
   const upper = event.key.toUpperCase();
-  if (!"ASDWJKL".includes(upper)) {
+  if (!Post.is_key_input(upper)) {
     return;
   }
   event.preventDefault();
 
-  const key = upper as Type.KeyInput;
-  const tick = Util.tick_now();
-  const post: Type.Post = { type: "key", key, down, tick };
-  state = Game.on_post(post, state);
+  const key = upper;
+  if (down) {
+    if (held_keys[key]) {
+      return;
+    }
+    held_keys[key] = true;
+    post_key(key, true);
+    return;
+  }
+  if (!held_keys[key]) {
+    return;
+  }
+  held_keys[key] = false;
+  post_key(key, false);
 }
+
+// Join the room once time sync is ready.
+game.on_sync(() => {
+  game.post(Post.join(pid));
+});
 
 // Wire input and kick the render loop.
 window.addEventListener("keydown", (e) => handle_key(e, true));
 window.addEventListener("keyup", (e) => handle_key(e, false));
+window.addEventListener("blur", release_all_keys);
+window.addEventListener("beforeunload", close_game);
 
 if (raw_toggle) {
   raw_toggle.addEventListener("change", () => {
@@ -187,6 +240,6 @@ if (raw_toggle && raw_toggle.checked) {
   set_render_mode("IMG");
 }
 
-apply_terminal_font();
+RenderTerminal.apply_terminal_font(root, measure_ctx);
 
 requestAnimationFrame(frame);

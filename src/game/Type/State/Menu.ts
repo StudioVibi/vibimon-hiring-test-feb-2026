@@ -3,6 +3,7 @@ import * as Nav from "../Nav";
 import * as State from "../State";
 import * as Map from "../Map";
 import * as Creature from "../Creature";
+import * as Post from "../Post";
 import * as Type from "../../Type";
 
 // Build a start menu state object.
@@ -11,8 +12,8 @@ function menu_start(selected_index: number): Type.Menu {
 }
 
 // Read the player party list from the map.
-function player_party(state: Type.State): Type.Creature[] {
-  const entity = Map.entity_at(state.map, state.player_pos);
+function player_party(state: { shared: Type.State; player: Type.PlayerState }): Type.Creature[] {
+  const entity = Map.entity_at(state.shared.map, state.player.player_pos);
   if (!entity) {
     return [];
   }
@@ -21,9 +22,9 @@ function player_party(state: Type.State): Type.Creature[] {
 
 // Enter the party picker mode from the start menu.
 function open_party(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   menu: Type.Menu
-): Type.State {
+): { shared: Type.State; player: Type.PlayerState } {
   const party = player_party(state);
   const total = Creature.party_total(party);
   if (total <= 0) {
@@ -34,23 +35,25 @@ function open_party(
     mon_index = 0;
   }
   const next_menu = { ...menu, mode: "party", mon_index };
-  return { ...state, menu: next_menu };
+  const player = { ...state.player, menu: next_menu };
+  return { ...state, player };
 }
 
 // Return from the party picker mode to the start menu.
 function close_party(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   menu: Type.Menu
-): Type.State {
+): { shared: Type.State; player: Type.PlayerState } {
   const next_menu = { ...menu, mode: "start" };
-  return { ...state, menu: next_menu };
+  const player = { ...state.player, menu: next_menu };
+  return { ...state, player };
 }
 
 // Confirm a party pick and swap with the first party slot.
 function pick_party(
-  state: Type.State,
+  state: { shared: Type.State; player: Type.PlayerState },
   menu: Type.Menu
-): Type.State {
+): { shared: Type.State; player: Type.PlayerState } {
   const party = player_party(state);
   const swapped = Creature.party_swap_first(party, menu.mon_index);
   let next = state;
@@ -60,27 +63,26 @@ function pick_party(
     });
   }
   const next_menu = { ...menu, mode: "party" };
-  return { ...next, menu: next_menu };
+  const player = { ...next.player, menu: next_menu };
+  return { ...next, player };
 }
 
 // Open the start menu and close dialog.
-export function open(state: Type.State): Type.State {
-  return { ...state, menu: menu_start(0), dialog: null };
+export function open(state: { shared: Type.State; player: Type.PlayerState }): { shared: Type.State; player: Type.PlayerState } {
+  const player = { ...state.player, menu: menu_start(0), dialog: null };
+  return { ...state, player };
 }
 
 // Apply a post to an open menu.
 export function on_post(
-  post: Type.Post,
-  state: Type.State
-): Type.State {
-  const menu = state.menu;
+  post: Post.KeyPost,
+  state: { shared: Type.State; player: Type.PlayerState }
+): { shared: Type.State; player: Type.PlayerState } {
+  const menu = state.player.menu;
   if (!menu) {
     return state;
   }
-  if (post.type !== "key") {
-    return state;
-  }
-  if (!post.down) {
+  if (post.down !== 1) {
     return state;
   }
 
@@ -100,7 +102,8 @@ export function on_post(
         return state;
       }
       const next_menu = { ...menu, mon_index: next_nav.index };
-      return { ...state, menu: next_menu };
+      const player = { ...state.player, menu: next_menu };
+      return { ...state, player };
     }
     if (post.key === "J") {
       return pick_party(state, menu);
@@ -122,7 +125,8 @@ export function on_post(
       return state;
     }
     const next_menu = { ...menu, selected_index: next_nav.index };
-    return { ...state, menu: next_menu };
+    const player = { ...state.player, menu: next_menu };
+    return { ...state, player };
   }
   switch (post.key) {
     case "J": {
@@ -133,7 +137,8 @@ export function on_post(
       return open_party(state, menu);
     }
     case "K": {
-      return { ...state, menu: null };
+      const player = { ...state.player, menu: null };
+      return { ...state, player };
     }
     default:
       return state;

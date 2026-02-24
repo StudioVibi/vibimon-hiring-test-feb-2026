@@ -14,9 +14,61 @@ const view_cols = Const.view_cols;
 const view_rows = Const.view_rows;
 const view_focus_x = 4;
 const view_focus_y = 4;
+const terminal_font_css = terminal_font(Const.terminal_font_name);
 
 const empty_ground_glyph = "___";
 const empty_entity_glyph = "   ";
+
+// Build a CSS font list string.
+function terminal_font(name: string): string {
+  return `"${name}", monospace`;
+}
+
+// Measure the glyph width for the active terminal font.
+function terminal_glyph_width(
+  measure_ctx: CanvasRenderingContext2D | null,
+  font_css: string,
+  size: number
+): number {
+  if (!measure_ctx) {
+    return 0;
+  }
+  measure_ctx.font = `${size}px ${font_css}`;
+  const metrics = measure_ctx.measureText("0");
+  return metrics.width;
+}
+
+// Apply terminal sizing to match the canvas resolution.
+export function apply_terminal_metrics(
+  root: HTMLElement,
+  measure_ctx: CanvasRenderingContext2D | null
+): void {
+  const test_size = 100;
+  const glyph_w = terminal_glyph_width(measure_ctx, terminal_font_css, test_size);
+  if (glyph_w <= 0) {
+    return;
+  }
+  const target_w = Const.terminal_w / Const.terminal_cols;
+  const line_h = Const.terminal_h / Const.terminal_rows;
+  const font_a = (target_w * test_size) / glyph_w;
+  const font_size = Math.min(font_a, line_h);
+  root.style.setProperty("--terminal-font-size", `${font_size.toFixed(2)}px`);
+  root.style.setProperty("--terminal-line-height", `${line_h}px`);
+}
+
+// Apply the current terminal font and metrics.
+export function apply_terminal_font(
+  root: HTMLElement,
+  measure_ctx: CanvasRenderingContext2D | null
+): void {
+  root.style.setProperty("--terminal-font", terminal_font_css);
+  apply_terminal_metrics(root, measure_ctx);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => {
+      apply_terminal_metrics(root, measure_ctx);
+    });
+  }
+}
 
 // Return the glyph for a sprite id.
 function glyph_asset(id: string): string {
@@ -341,19 +393,19 @@ function battle_moves_text(battle: Type.Battle): string[] {
 
 // Build the battle screen text.
 export function battle_text(
-  st: Type.State,
+  st: { shared: Type.State; player: Type.PlayerState },
   tick: number,
   instant: boolean
 ): string[] {
-  const battle = st.battle;
+  const battle = st.player.battle;
   if (!battle) {
     return [];
   }
 
   if (battle.phase === "mon") {
     const top = party_picker_top_text(battle.party, battle.mon_index);
-    if (st.dialog) {
-      const bot = dialog_text(st.dialog, tick, 20, 6);
+    if (st.player.dialog) {
+      const bot = dialog_text(st.player.dialog, tick, 20, 6);
       return [...top, ...bot];
     }
     const hint: Type.DialogText = [["Choose a MON."]];
@@ -401,8 +453,8 @@ export function battle_text(
   const hp_text = battle_hp_text(player_hp, battle.player.mhp);
   grid_write(grid, 10, 11, hp_text, 7);
 
-  if (st.dialog) {
-    const lines = dialog_text(st.dialog, tick, 20, 6);
+  if (st.player.dialog) {
+    const lines = dialog_text(st.player.dialog, tick, 20, 6);
     return grid_overlay(grid, 12, lines);
   }
 
@@ -547,8 +599,8 @@ export function bar_fill_levels(ratio: number): number[] {
 }
 
 // Read the player party list from the current state.
-function player_party(st: Type.State): Type.Creature[] {
-  const entity = Map.entity_at(st.map, st.player_pos);
+function player_party(st: { shared: Type.State; player: Type.PlayerState }): Type.Creature[] {
+  const entity = Map.entity_at(st.shared.map, st.player.player_pos);
   if (!entity) {
     return [];
   }
@@ -556,10 +608,10 @@ function player_party(st: Type.State): Type.Creature[] {
 }
 
 // Build the raw terminal grid for the map screen.
-function map_raw_lines(st: Type.State, tick: number): string[] {
+function map_raw_lines(st: { shared: Type.State; player: Type.PlayerState }, tick: number): string[] {
   let lines: string[] = [];
-  const start_x = st.player_pos.x - view_focus_x;
-  const start_y = st.player_pos.y - view_focus_y;
+  const start_x = st.player.player_pos.x - view_focus_x;
+  const start_y = st.player.player_pos.y - view_focus_y;
   const cell_w = 4;
   const line_w = view_cols * cell_w;
 
@@ -570,7 +622,7 @@ function map_raw_lines(st: Type.State, tick: number): string[] {
       const wx = start_x + x;
       const wy = start_y + y;
       const pos = Pos.create(wx, wy);
-      const tile = Map.get(st.map, pos);
+      const tile = Map.get(st.shared.map, pos);
       let ground_id = "tile_grass_00_00";
       if (tile) {
         ground_id = tile.ground;
@@ -582,7 +634,7 @@ function map_raw_lines(st: Type.State, tick: number): string[] {
         entity = glyph_entity(tile.entity);
         dir = tile.entity.direction;
       }
-      if (Pos.equal(pos, st.player_pos)) {
+      if (Pos.equal(pos, st.player.player_pos)) {
         if (!tile || !tile.entity) {
           entity = glyph_asset("ent_red_front_stand");
         }
@@ -594,14 +646,14 @@ function map_raw_lines(st: Type.State, tick: number): string[] {
     lines.push(ground_line);
   }
 
-  if (st.menu && st.menu.mode === "start") {
-    const menu_lines = raw_expand_lines(menu_text(st.menu));
+  if (st.player.menu && st.player.menu.mode === "start") {
+    const menu_lines = raw_expand_lines(menu_text(st.player.menu));
     const menu_x = 5 * cell_w;
     lines = raw_overlay_lines(lines, menu_lines, menu_x, 0, line_w);
   }
 
-  if (st.dialog) {
-    const dialog_lines = dialog_text(st.dialog, tick, 20, 6);
+  if (st.player.dialog) {
+    const dialog_lines = dialog_text(st.player.dialog, tick, 20, 6);
     const expanded = raw_expand_lines(dialog_lines);
     const start = lines.length - expanded.length;
     for (let i = 0; i < expanded.length; i++) {
@@ -870,10 +922,10 @@ function raw_place_party_bars(
 
 // Build the raw terminal output for the current frame.
 export function on_draw_raw(
-  st: Type.State,
+  st: { shared: Type.State; player: Type.PlayerState },
   tick: number
 ): string {
-  const menu = st.menu;
+  const menu = st.player.menu;
   if (menu && menu.mode === "party") {
     const party = player_party(st);
     let lines = party_picker_text(party, menu.mon_index);
@@ -882,9 +934,9 @@ export function on_draw_raw(
     return wide.join("\n");
   }
 
-  if (st.battle) {
+  if (st.player.battle) {
     let lines = battle_text(st, tick, false);
-    const battle = st.battle;
+    const battle = st.player.battle;
     if (!battle) {
       return "";
     }

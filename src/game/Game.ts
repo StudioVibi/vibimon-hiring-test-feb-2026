@@ -1,149 +1,63 @@
-import * as Const from "./Const";
-import * as Battle from "./Type/State/Battle";
-import * as Dialog from "./Type/State/Dialog";
-import * as Menu from "./Type/State/Menu";
-import * as State from "./Type/State";
 import * as World from "./Type/Map/World";
 import * as Map from "./Type/Map";
-import * as Pos from "./Type/Pos";
+import * as Post from "./Type/Post";
+import * as Players from "./Type/State/Players";
 import * as Type from "./Type";
 
 // Build the initial game state.
 export function create(): Type.State {
   const world = World.create();
+  let map = world.map;
+  const spawn_tile = Map.get(map, world.player_pos);
+  if (spawn_tile && spawn_tile.entity) {
+    if (spawn_tile.entity.name === "Player") {
+      map = Map.set(map, world.player_pos, { ...spawn_tile, entity: null });
+    }
+  }
   return {
-    map: world.map,
-    player_pos: world.player_pos,
-    dialog: null,
-    menu: null,
-    battle: null
+    map,
+    spawn_pos: world.player_pos,
+    players: {},
+    tick: 0
   };
 }
 
-// Update the state on each tick.
-export function on_tick(
-  state: Type.State,
-  tick: number
-): Type.State {
-  if (state.battle) {
-    return Battle.on_tick(state, tick);
+// Update the full multiplayer state for one simulation tick.
+export function on_tick(state: Type.State): Type.State {
+  let next = { ...state, tick: state.tick + 1 };
+  const ids = Players.player_ids(next);
+  for (let i = 0; i < ids.length; i++) {
+    const pid = ids[i];
+    const scoped = Players.player_project(next, pid);
+    const updated = Players.on_tick_player(scoped, next.tick);
+    next = Players.player_commit(next, pid, updated);
   }
-  if (state.dialog || state.menu) {
-    return state;
-  }
-
-  const entity = Map.entity_at(state.map, state.player_pos);
-  if (!entity) {
-    return state;
-  }
-
-  let dx = 0;
-  if (entity.keys.d) {
-    dx += 1;
-  }
-  if (entity.keys.a) {
-    dx -= 1;
-  }
-  let dy = 0;
-  if (entity.keys.s) {
-    dy += 1;
-  }
-  if (entity.keys.w) {
-    dy -= 1;
-  }
-
-  if (dx === 0 && dy === 0) {
-    if (entity.turn_tick > entity.last_tick) {
-      return State.player_transform(state, player => {
-        return { ...player, turn_tick: player.last_tick };
-      });
-    }
-    return state;
-  }
-
-  if (tick - entity.last_tick < Const.move_cooldown) {
-    return state;
-  }
-
-  let delta: Type.Pos;
-  if (dx !== 0 && dy !== 0) {
-    delta = { x: dx, y: 0 };
-  } else {
-    delta = { x: dx, y: dy };
-  }
-
-  const dir = Pos.delta_dir(delta);
-  if (dir !== entity.direction) {
-    const elapsed = tick - entity.last_tick;
-    const was_walking = elapsed <= Const.move_cooldown;
-    const turned = State.player_transform(state, player => {
-      let turn_tick = player.turn_tick;
-      if (!was_walking) {
-        turn_tick = tick;
-      }
-      return { ...player, direction: dir, turn_tick };
-    });
-    if (was_walking) {
-      return Battle.try_move(turned, turned.player_pos, delta, tick);
-    }
-    return turned;
-  }
-
-  if (entity.turn_tick > entity.last_tick) {
-    if (tick - entity.turn_tick < Const.turn_cooldown) {
-      return state;
-    }
-  }
-
-  return Battle.try_move(state, state.player_pos, delta, tick);
+  return next;
 }
 
-// Apply a user post to the game state.
+// Apply a network post to the shared multiplayer state.
 export function on_post(
   post: Type.Post,
   state: Type.State
 ): Type.State {
-  if (post.type !== "key") {
+  if (Post.is_join_post(post)) {
+    return Players.player_join(state, post.pid);
+  }
+  if (Post.is_leave_post(post)) {
+    return Players.player_leave(state, post.pid);
+  }
+  if (!Post.is_key_post(post)) {
     return state;
   }
 
-  if (state.battle) {
-    return Battle.on_post(post, state);
+  let next = state;
+  if (!Players.player_get(next, post.pid)) {
+    next = Players.player_join(next, post.pid);
   }
-
-  const { key, down, tick } = post;
-
-  if (state.menu) {
-    return Menu.on_post(post, state);
+  if (!Players.player_get(next, post.pid)) {
+    return next;
   }
-
-  if (key === "A" || key === "S" || key === "D" || key === "W") {
-    if (down && state.dialog) {
-      return state;
-    }
-    const k = key.toLowerCase() as "a" | "s" | "d" | "w";
-    return State.player_transform(state, entity => {
-      const keys = { ...entity.keys, [k]: down };
-      return { ...entity, keys };
-    });
-  }
-
-  if (!down) {
-    return state;
-  }
-
-  if (state.dialog) {
-    return Dialog.on_post(post, state);
-  }
-
-  switch (key) {
-    case "J": {
-      return Dialog.open_facing(state, tick);
-    }
-    case "L": {
-      return Menu.open(state);
-    }
-    default:
-      return state;
-  }
+  const scoped = Players.player_project(next, post.pid);
+  const updated = Players.on_key_post(post, scoped);
+  return Players.player_commit(next, post.pid, updated);
 }
