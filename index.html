@@ -322,7 +322,7 @@
     <li>O estado do jogo (<span class="il">State</span>) funciona como um banco de dados em memória: todo objeto tem um caminho único na árvore de State (ex: NPCs ficam em <span class="il">player.map[pos].entity</span>). Essa é a fonte autoritária de verdade &mdash; nenhum dado é duplicado.</li>
     <li>O jogo usa uma arquitetura de event stream: há um estado inicial, e eventos/transações dos jogadores alteram esse estado. O módulo de rede (VibiNet) cuida da conectividade de forma transparente.</li>
   </ul>
-  <p>Neste PR, uma IA tentou refatorar o jogo para introduzir suporte a <strong>multiplayer</strong> (antes, o State só suportava 1 jogador). O tech lead rejeitou o PR. Ele é longo, mas boa parte das mudanças é inofensiva &mdash; existem, porém, alguns <strong style="color:#dc322f;">problemas estruturais graves</strong>. Seu objetivo é localizar esses problemas.</p>
+  <p>Neste PR, uma IA tentou refatorar o jogo para introduzir suporte a <strong>multiplayer</strong> (antes, o State só suportava 1 jogador). O tech lead rejeitou o PR. Ele é longo, mas boa parte das mudanças é inofensiva. Existem, porém, alguns <strong style="color:#dc322f;">problemas estruturais graves</strong>. Seu objetivo é localizar esses problemas.</p>
 </div>
 
 <div class="question">
