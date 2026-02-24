@@ -5,212 +5,216 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StudioVibi - Teste Dev</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    background: #0d1117;
-    color: #e6edf3;
-    line-height: 1.6;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    background: #fdf6e3;
+    color: #657b83;
+    line-height: 1.7;
     padding: 2rem 1rem;
+    font-size: 14px;
   }
   .container {
-    max-width: 800px;
+    max-width: 760px;
     margin: 0 auto;
   }
   h1 {
-    font-size: 1.8rem;
-    margin-bottom: 0.5rem;
-    color: #58a6ff;
+    font-size: 1.4rem;
+    color: #073642;
+    margin-bottom: 0.2rem;
+    font-weight: 700;
   }
+  h1::before { content: "# "; color: #93a1a1; }
   h2 {
-    font-size: 1.3rem;
-    margin: 2rem 0 0.5rem;
-    color: #58a6ff;
-    border-bottom: 1px solid #21262d;
-    padding-bottom: 0.3rem;
-  }
-  h3 {
     font-size: 1.1rem;
-    margin: 1.5rem 0 0.5rem;
-    color: #79c0ff;
+    margin: 2.5rem 0 0.8rem;
+    color: #073642;
+    font-weight: 700;
   }
+  h2::before { content: "## "; color: #93a1a1; }
   p, li {
-    color: #c9d1d9;
+    color: #586e75;
     margin-bottom: 0.5rem;
   }
-  ul { padding-left: 1.5rem; margin-bottom: 1rem; }
-  a { color: #58a6ff; }
+  ul {
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+    list-style: none;
+  }
+  ul li::before {
+    content: "- ";
+    color: #93a1a1;
+  }
+  a {
+    color: #268bd2;
+    text-decoration: none;
+  }
+  a:hover { text-decoration: underline; }
   pre {
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 6px;
+    background: #eee8d5;
+    border: 1px solid #93a1a1;
     padding: 1rem;
     overflow-x: auto;
-    font-size: 0.9rem;
-    line-height: 1.5;
+    font-size: 13px;
+    line-height: 1.6;
     margin: 0.5rem 0 1rem;
   }
   code {
-    font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
-    color: #e6edf3;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    color: #657b83;
   }
-  .inline-code {
-    background: #161b22;
-    padding: 0.15rem 0.4rem;
-    border-radius: 3px;
+  .il {
+    background: #eee8d5;
+    padding: 0.1rem 0.3rem;
     font-size: 0.9em;
   }
   label {
     display: block;
-    font-weight: 600;
+    font-weight: 700;
     margin: 1rem 0 0.3rem;
-    color: #e6edf3;
+    color: #073642;
   }
+  label::before { content: "> "; color: #93a1a1; }
   input[type="text"] {
     width: 100%;
-    padding: 0.6rem 0.8rem;
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    color: #e6edf3;
-    font-size: 1rem;
-    font-family: inherit;
+    padding: 0.5rem 0.7rem;
+    background: #eee8d5;
+    border: 1px solid #93a1a1;
+    color: #073642;
+    font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
   }
   input[type="text"]:focus {
     outline: none;
-    border-color: #58a6ff;
+    border-color: #268bd2;
+    background: #fdf6e3;
   }
+  input[type="text"]::placeholder { color: #93a1a1; }
   textarea {
     width: 100%;
     min-height: 120px;
-    padding: 0.8rem;
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    color: #e6edf3;
-    font-size: 0.95rem;
-    font-family: inherit;
-    line-height: 1.5;
+    padding: 0.7rem;
+    background: #eee8d5;
+    border: 1px solid #93a1a1;
+    color: #073642;
+    font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.6;
     resize: vertical;
   }
   textarea:focus {
     outline: none;
-    border-color: #58a6ff;
+    border-color: #268bd2;
+    background: #fdf6e3;
   }
+  textarea::placeholder { color: #93a1a1; }
   .question {
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin: 1.5rem 0;
+    border-left: 3px solid #93a1a1;
+    padding: 1rem 1.2rem;
+    margin: 1.2rem 0;
   }
   .question-header {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #58a6ff;
+    font-size: 13px;
+    font-weight: 700;
+    color: #268bd2;
     margin-bottom: 0.5rem;
   }
-  .instruction {
-    font-style: italic;
-    color: #8b949e;
-    margin-bottom: 1rem;
-    font-size: 0.9rem;
-  }
+  .question-header::before { content: "-- "; color: #93a1a1; }
   .section-intro {
-    background: #161b22;
-    border-left: 3px solid #58a6ff;
+    border: 1px dashed #93a1a1;
     padding: 1rem 1.2rem;
     margin: 1rem 0;
-    border-radius: 0 6px 6px 0;
+    background: #eee8d5;
   }
+  .warn {
+    color: #dc322f;
+    font-weight: 700;
+    margin-top: 0.5rem;
+  }
+  .muted { color: #93a1a1; }
   button {
-    background: #238636;
-    color: #fff;
-    border: none;
-    padding: 0.8rem 2rem;
-    font-size: 1.1rem;
-    border-radius: 6px;
+    background: #073642;
+    color: #fdf6e3;
+    border: 1px solid #073642;
+    padding: 0.7rem 2rem;
+    font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
     cursor: pointer;
     margin-top: 2rem;
     width: 100%;
-    font-weight: 600;
   }
-  button:hover { background: #2ea043; }
+  button:hover { background: #586e75; border-color: #586e75; }
   button:disabled {
-    background: #21262d;
-    color: #484f58;
+    background: #eee8d5;
+    color: #93a1a1;
+    border-color: #93a1a1;
     cursor: not-allowed;
   }
   .success {
-    background: #0d2818;
-    border: 1px solid #238636;
-    padding: 1.5rem;
-    border-radius: 8px;
+    border: 1px solid #859900;
+    padding: 1.2rem;
     text-align: center;
     margin-top: 2rem;
     display: none;
+    background: #eee8d5;
   }
+  .success p { color: #859900; }
   .error {
-    background: #3d1117;
-    border: 1px solid #f85149;
-    padding: 1rem;
-    border-radius: 8px;
+    border: 1px solid #dc322f;
+    padding: 0.8rem;
     margin-top: 1rem;
     display: none;
-    color: #f85149;
+    color: #dc322f;
   }
-  .kw { color: #ff7b72; }
-  .tp { color: #79c0ff; }
-  .fn { color: #d2a8ff; }
-  .ct { color: #ffa657; }
-  .cm { color: #8b949e; }
-  .st { color: #a5d6ff; }
-  .op { color: #ff7b72; }
+  .kw { color: #859900; }
+  .tp { color: #268bd2; }
+  .fn { color: #6c71c4; }
+  .ct { color: #cb4b16; }
+  .op { color: #dc322f; }
   .subtitle {
-    color: #8b949e;
+    color: #93a1a1;
     margin-bottom: 2rem;
+    font-size: 13px;
+  }
+  .subtitle::before { content: "// "; }
+  .sep {
+    border: none;
+    border-top: 1px dashed #93a1a1;
+    margin: 2rem 0;
   }
 </style>
 </head>
 <body>
 <div class="container">
 
-<h1>StudioVibi - Teste Dev (Fev/2026)</h1>
-<p class="subtitle">Teste de leitura e compreensao de codigo funcional</p>
+<h1>StudioVibi &mdash; Teste Dev (Fev/2026)</h1>
+<p class="subtitle">teste de leitura e compreensão de código funcional</p>
 
-<!-- Identity -->
-<h2>Identificacao</h2>
+<h2>Identificação</h2>
 <div class="question">
-  <label for="handle">Handle (pseudonimo)</label>
-  <input type="text" id="handle" placeholder="Escolha um pseudonimo qualquer">
-  <label for="hash" style="margin-top:1rem">Hash SHA-256 do seu Discord User ID</label>
-  <input type="text" id="hash" placeholder="Ex: a1b2c3d4...">
-  <p style="margin-top:0.5rem; font-size:0.85rem; color:#8b949e;">
-    Para obter seu Discord User ID: Discord &gt; Configuracoes &gt; Avancado &gt; Modo Desenvolvedor (ativar).
-    Depois, clique no seu perfil &gt; Copiar ID do Usuario.
-    Em seguida, gere o SHA-256 desse ID (ex: <span class="inline-code">echo -n "SEU_ID" | shasum -a 256</span>).
-    Isso permite verificar sua identidade depois sem expor seu Discord publicamente.
-  </p>
+  <label for="discord">Discord</label>
+  <input type="text" id="discord" placeholder="seu_usuario">
 </div>
 
-<!-- Part 1: Bend2 -->
-<h2>Parte 1: Leitura de Codigo (Bend2)</h2>
+<hr class="sep">
+
+<h2>Parte 1: Leitura de Código (Bend2)</h2>
 <div class="section-intro">
-  <p>Os trechos abaixo estao escritos em <strong>Bend2</strong>, uma linguagem funcional com tipos algebricos, pattern matching e lambdas. A sintaxe relevante:</p>
+  <p>Os trechos abaixo estão escritos em <strong>Bend2</strong>, uma linguagem funcional. A sintaxe relevante:</p>
   <ul>
-    <li><span class="inline-code">type Nome { Ctor1{...} Ctor2{...} }</span> &mdash; define um tipo algebrico (ADT) com construtores</li>
-    <li><span class="inline-code">def f(x: T) -> R: body</span> &mdash; define uma funcao</li>
-    <li><span class="inline-code">match x: case Ctor{a, b}: ...</span> &mdash; pattern matching sobre construtores</li>
-    <li><span class="inline-code">x => body</span> &mdash; funcao anonima (lambda)</li>
-    <li><span class="inline-code">A -> B</span> &mdash; tipo funcao de A para B</li>
+    <li><span class="il">type Nome { Ctor1{...} Ctor2{...} }</span> &mdash; tipo algébrico (ADT)</li>
+    <li><span class="il">def f(x: T) -> R: body</span> &mdash; definição de função</li>
+    <li><span class="il">match x: case Ctor{a, b}: ...</span> &mdash; pattern matching</li>
+    <li><span class="il">x => body</span> &mdash; lambda</li>
+    <li><span class="il">A -> B</span> &mdash; tipo função</li>
   </ul>
-  <p><strong>Para cada trecho, explique com suas proprias palavras o que o codigo faz, quais padroes/tecnicas estao sendo usados e como ele opera.</strong></p>
-  <p style="color:#f85149; font-weight:600; margin-top:0.5rem;">IMPORTANTE: NAO use IA nesta parte. Queremos ouvir suas proprias palavras e avaliar seu conhecimento atual. Respostas geradas por IA serao desconsideradas.</p>
+  <p class="warn">IMPORTANTE: NÃO use IA nesta parte. Queremos suas próprias palavras e seu conhecimento atual. Respostas geradas por IA serão desconsideradas.</p>
 </div>
 
-<!-- Q1 -->
 <div class="question">
-  <div class="question-header">Questao 1</div>
+  <div class="question-header">Questão 1 &mdash; O que esse código faz?</div>
   <pre><code><span class="kw">type</span> <span class="tp">Tree</span> {
   <span class="ct">leaf</span>{}
   <span class="ct">node</span>{<span class="tp">U32</span>, <span class="tp">Tree</span>, <span class="tp">Tree</span>}
@@ -222,12 +226,11 @@
       <span class="ct">leaf</span>{}
     <span class="kw">case</span> <span class="ct">node</span>{v, l, r}:
       <span class="ct">node</span>{v, <span class="fn">foo</span>(r), <span class="fn">foo</span>(l)}</code></pre>
-  <textarea id="q1" placeholder="Explique o que esse codigo faz..."></textarea>
+  <textarea id="q1" placeholder="sua resposta..."></textarea>
 </div>
 
-<!-- Q2 -->
 <div class="question">
-  <div class="question-header">Questao 2</div>
+  <div class="question-header">Questão 2 &mdash; O que esse código faz?</div>
   <pre><code><span class="kw">type</span> <span class="tp">List</span> {
   <span class="ct">nil</span>{}
   <span class="ct">cons</span>{<span class="tp">U32</span>, <span class="tp">List</span>}
@@ -239,12 +242,11 @@
       acc
     <span class="kw">case</span> <span class="ct">cons</span>{h, t}:
       <span class="fn">bar</span>(t, <span class="ct">cons</span>{h, acc})</code></pre>
-  <textarea id="q2" placeholder="Explique o que esse codigo faz..."></textarea>
+  <textarea id="q2" placeholder="sua resposta..."></textarea>
 </div>
 
-<!-- Q3 -->
 <div class="question">
-  <div class="question-header">Questao 3</div>
+  <div class="question-header">Questão 3 &mdash; O que esse código faz?</div>
   <pre><code><span class="kw">type</span> <span class="tp">List</span> {
   <span class="ct">nil</span>{}
   <span class="ct">cons</span>{<span class="tp">U32</span>, <span class="tp">List</span>}
@@ -256,12 +258,11 @@
       <span class="ct">nil</span>{}
     <span class="kw">case</span> <span class="ct">cons</span>{h, t}:
       <span class="ct">cons</span>{<span class="fn">f</span>(h), <span class="fn">baz</span>(t, f)}</code></pre>
-  <textarea id="q3" placeholder="Explique o que esse codigo faz..."></textarea>
+  <textarea id="q3" placeholder="sua resposta..."></textarea>
 </div>
 
-<!-- Q4 -->
 <div class="question">
-  <div class="question-header">Questao 4</div>
+  <div class="question-header">Questão 4 &mdash; Qual o problema com esse código?</div>
   <pre><code><span class="kw">type</span> <span class="tp">Tree</span> {
   <span class="ct">leaf</span>{}
   <span class="ct">node</span>{<span class="tp">U32</span>, <span class="tp">Tree</span>, <span class="tp">Tree</span>}
@@ -285,12 +286,11 @@
       <span class="ct">nil</span>{}
     <span class="kw">case</span> <span class="ct">node</span>{v, l, r}:
       <span class="fn">cat</span>(<span class="fn">cat</span>(<span class="fn">qux</span>(l), <span class="ct">cons</span>{v, <span class="ct">nil</span>{}}), <span class="fn">qux</span>(r))</code></pre>
-  <textarea id="q4" placeholder="Explique o que esse codigo faz..."></textarea>
+  <textarea id="q4" placeholder="sua resposta..."></textarea>
 </div>
 
-<!-- Q5 -->
 <div class="question">
-  <div class="question-header">Questao 5</div>
+  <div class="question-header">Questão 5 &mdash; O que esse código faz?</div>
   <pre><code><span class="kw">type</span> <span class="tp">Tree</span> {
   <span class="ct">leaf</span>{}
   <span class="ct">node</span>{<span class="tp">U32</span>, <span class="tp">Tree</span>, <span class="tp">Tree</span>}
@@ -301,86 +301,84 @@
   <span class="ct">cons</span>{<span class="tp">U32</span>, <span class="tp">List</span>}
 }
 
-<span class="kw">def</span> <span class="fn">zap</span>(t: <span class="tp">Tree</span>) <span class="op">-></span> <span class="tp">List</span> <span class="op">-></span> <span class="tp">List</span>:
+<span class="kw">def</span> <span class="fn">boo</span>(t: <span class="tp">Tree</span>) <span class="op">-></span> <span class="tp">List</span> <span class="op">-></span> <span class="tp">List</span>:
   <span class="kw">match</span> t:
     <span class="kw">case</span> <span class="ct">leaf</span>{}:
       tail <span class="op">=></span> tail
     <span class="kw">case</span> <span class="ct">node</span>{v, l, r}:
-      tail <span class="op">=></span> <span class="fn">zap</span>(l)(<span class="ct">cons</span>{v, <span class="fn">zap</span>(r)(tail)})</code></pre>
-  <textarea id="q5" placeholder="Explique o que esse codigo faz..."></textarea>
+      tail <span class="op">=></span> <span class="fn">boo</span>(l)(<span class="ct">cons</span>{v, <span class="fn">boo</span>(r)(tail)})</code></pre>
+  <textarea id="q5" placeholder="sua resposta..."></textarea>
 </div>
 
-<!-- Part 2: PR Review -->
+<hr class="sep">
+
 <h2>Parte 2: Code Review</h2>
 <div class="section-intro">
-  <p><strong>Contexto:</strong> O VibiMon e um RPG online retro feito em TypeScript, organizado no estilo funcional puro (como Haskell).</p>
+  <p><strong>Contexto:</strong> O VibiMon é um RPG online retro feito em TypeScript, organizado no estilo funcional puro (como Haskell).</p>
   <ul>
-    <li>Todos os tipos do jogo sao definidos em <span class="inline-code">src/game/Type.ts</span> como tipos algebricos.</li>
-    <li>Para cada tipo, existe um arquivo em <span class="inline-code">src/game/Type/NomeDoTipo.ts</span> com funcoes puras relacionadas (ex: <span class="inline-code">get_player_hp : Player -> number</span> fica em <span class="inline-code">Type/Player.ts</span>).</li>
-    <li>Todas as funcoes sao puras e imutaveis.</li>
-    <li>O estado do jogo (<span class="inline-code">State</span>) funciona como um banco de dados em memoria: todo objeto do jogo tem um caminho unico dentro da arvore de <span class="inline-code">State</span> (ex: NPCs ficam em <span class="inline-code">player.map[pos].entity</span>). Essa e a fonte autoritaria de verdade &mdash; nenhum dado e duplicado em outro lugar.</li>
-    <li>O jogo usa uma arquitetura de event stream: ha um estado inicial, e eventos/transacoes dos jogadores alteram esse estado. O modulo de rede (VibiNet) cuida da conectividade de forma transparente &mdash; nao implementamos networking, apenas arquitetamos o jogo para funcionar assim.</li>
+    <li>Todos os tipos do jogo são definidos em <span class="il">src/game/Type.ts</span> como tipos algébricos.</li>
+    <li>Para cada tipo, existe um arquivo <span class="il">src/game/Type/NomeDoTipo.ts</span> com funções puras relacionadas (ex: <span class="il">get_player_hp : Player -> number</span> fica em <span class="il">Type/Player.ts</span>).</li>
+    <li>Todas as funções são puras e imutáveis.</li>
+    <li>O estado do jogo (<span class="il">State</span>) funciona como um banco de dados em memória: todo objeto tem um caminho único na árvore de State (ex: NPCs ficam em <span class="il">player.map[pos].entity</span>). Essa é a fonte autoritária de verdade &mdash; nenhum dado é duplicado.</li>
+    <li>O jogo usa uma arquitetura de event stream: há um estado inicial, e eventos/transações dos jogadores alteram esse estado. O módulo de rede (VibiNet) cuida da conectividade de forma transparente.</li>
   </ul>
-  <p>Neste PR, uma IA tentou refatorar o jogo para introduzir suporte a <strong>multiplayer</strong>. Antes, o <span class="inline-code">State</span> so suportava 1 jogador. O tech lead rejeitou o PR.</p>
-  <p><strong>Revise o PR e aponte os problemas que voce encontrar.</strong></p>
-  <p style="color:#8b949e; margin-top:0.5rem;">Nesta parte, voce pode usar IA a vontade.</p>
+  <p>Neste PR, uma IA tentou refatorar o jogo para introduzir suporte a <strong>multiplayer</strong>. Antes, o State só suportava 1 jogador. O tech lead rejeitou o PR.</p>
+  <p>Revise o PR e aponte os problemas que você encontrar.</p>
+  <p class="muted" style="margin-top:0.5rem;">Nesta parte, você pode usar IA à vontade.</p>
 </div>
 
 <div class="question">
   <div class="question-header">Review do PR</div>
   <p style="margin-bottom:1rem;">
     <a href="https://github.com/StudioVibi/vibimon-hiring-test-feb-2026/pull/1/files" target="_blank">
-      Abrir PR no GitHub (nova aba)
+      -> abrir PR no GitHub
     </a>
   </p>
-  <textarea id="pr_review" placeholder="Aponte os problemas que voce encontrou no PR..." style="min-height:200px;"></textarea>
+  <textarea id="pr_review" placeholder="aponte os problemas que você encontrou no PR..." style="min-height:200px;"></textarea>
 </div>
 
-<!-- Submit -->
-<button id="submit-btn" onclick="submitForm()">Enviar Respostas</button>
+<button id="submit-btn" onclick="submitForm()">:wq</button>
 <div class="error" id="error-msg"></div>
 <div class="success" id="success-msg">
-  <h3 style="color:#3fb950; margin-bottom:0.5rem;">Respostas enviadas com sucesso!</h3>
-  <p>Obrigado por participar. Entraremos em contato pelo Discord.</p>
+  <p style="font-weight:700;">Respostas enviadas com sucesso.</p>
+  <p>Entraremos em contato pelo Discord.</p>
 </div>
 
 </div>
 
 <script>
 async function submitForm() {
-  var btn    = document.getElementById("submit-btn");
-  var errEl  = document.getElementById("error-msg");
-  var sucEl  = document.getElementById("success-msg");
+  var btn   = document.getElementById("submit-btn");
+  var errEl = document.getElementById("error-msg");
+  var sucEl = document.getElementById("success-msg");
   errEl.style.display = "none";
 
-  var handle = document.getElementById("handle").value.trim();
-  var hash   = document.getElementById("hash").value.trim();
-  var q1     = document.getElementById("q1").value.trim();
-  var q2     = document.getElementById("q2").value.trim();
-  var q3     = document.getElementById("q3").value.trim();
-  var q4     = document.getElementById("q4").value.trim();
-  var q5     = document.getElementById("q5").value.trim();
-  var pr     = document.getElementById("pr_review").value.trim();
+  var discord = document.getElementById("discord").value.trim();
+  var q1      = document.getElementById("q1").value.trim();
+  var q2      = document.getElementById("q2").value.trim();
+  var q3      = document.getElementById("q3").value.trim();
+  var q4      = document.getElementById("q4").value.trim();
+  var q5      = document.getElementById("q5").value.trim();
+  var pr      = document.getElementById("pr_review").value.trim();
 
-  if (!handle || !hash) {
-    errEl.textContent = "Preencha o handle e o hash.";
+  if (!discord) {
+    errEl.textContent = "Preencha seu @ do Discord.";
     errEl.style.display = "block";
     return;
   }
   if (!q1 && !q2 && !q3 && !q4 && !q5 && !pr) {
-    errEl.textContent = "Responda pelo menos uma questao.";
+    errEl.textContent = "Responda pelo menos uma questão.";
     errEl.style.display = "block";
     return;
   }
 
   btn.disabled = true;
-  btn.textContent = "Enviando...";
+  btn.textContent = "enviando...";
 
   var sep = "━━━━━━━━━━━━━━━━━━━━";
 
   var parts = [];
-  parts.push("**Handle:** " + handle);
-  parts.push("**Hash:** " + hash);
+  parts.push("**Discord:** " + discord);
   parts.push(sep);
 
   if (q1) parts.push("**Q1 (Tree):**\n" + q1);
@@ -392,26 +390,23 @@ async function submitForm() {
 
   var full = parts.join("\n\n");
 
-  // Discord limits messages to 2000 chars, so we split if needed
   var chunks = [];
-  var header = "**Handle:** " + handle + "\n**Hash:** " + hash + "\n" + sep;
+  var header = "**Discord:** " + discord + "\n" + sep;
 
   if (full.length <= 2000) {
     chunks.push(full);
   } else {
-    // Send header + each answer as separate messages
     chunks.push(header);
     var answers = [
-      q1 ? "**Q1 (Tree):**\n" + q1 : null,
-      q2 ? "**Q2 (List):**\n" + q2 : null,
-      q3 ? "**Q3 (Higher-order):**\n" + q3 : null,
-      q4 ? "**Q4 (Tree->List):**\n" + q4 : null,
-      q5 ? "**Q5 (Closures):**\n" + q5 : null,
-      pr ? "**PR Review (" + handle + "):**\n" + pr : null,
+      q1 ? "**Q1 (" + discord + "):**\n" + q1 : null,
+      q2 ? "**Q2 (" + discord + "):**\n" + q2 : null,
+      q3 ? "**Q3 (" + discord + "):**\n" + q3 : null,
+      q4 ? "**Q4 (" + discord + "):**\n" + q4 : null,
+      q5 ? "**Q5 (" + discord + "):**\n" + q5 : null,
+      pr ? "**PR Review (" + discord + "):**\n" + pr : null,
     ];
     for (var i = 0; i < answers.length; i++) {
       if (answers[i]) {
-        // Further split if a single answer > 2000
         var a = answers[i];
         while (a.length > 2000) {
           chunks.push(a.slice(0, 2000));
@@ -434,7 +429,6 @@ async function submitForm() {
       if (!res.ok) {
         throw new Error("Discord retornou " + res.status);
       }
-      // Rate limit: wait 500ms between messages
       if (i < chunks.length - 1) {
         await new Promise(function(r) { setTimeout(r, 500); });
       }
@@ -442,10 +436,10 @@ async function submitForm() {
     sucEl.style.display = "block";
     btn.style.display = "none";
   } catch (e) {
-    errEl.textContent = "Erro ao enviar: " + e.message + ". Tente novamente.";
+    errEl.textContent = "Erro ao enviar: " + e.message;
     errEl.style.display = "block";
     btn.disabled = false;
-    btn.textContent = "Enviar Respostas";
+    btn.textContent = ":wq";
   }
 }
 </script>
